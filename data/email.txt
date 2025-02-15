@@ -1,0 +1,8 @@
+Message ID	<wXxMdx2al9wk8kTSA3VaVg@notifications.google.com>
+Created on:	15 February 2025 at 10:00 (Delivered after 11 seconds)
+From:	'Straive Human Resource' via Gramener All <all@gramener.com>
+To:	shovan.gaur@gramener.com
+Subject:	Birthday Wishes !!
+SPF:	PASS with IP 2607:f8b0:4864:20:0:0:0:b46 Learn more
+DKIM:	'PASS' with domain gramener.com Learn more
+DMARC:	'PASS' Learn more
