@@ -17,4 +17,4 @@ WORKDIR /app
 EXPOSE 8000
 
 # Command to run the FastAPI app
-CMD ["uvicorn", "post2:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "post:app", "--host", "0.0.0.0", "--port", "8001"]
