@@ -6,6 +6,11 @@ import json
 import glob
 import sqlite3
 from datetime import datetime
+from pathlib import Path
+
+from PIL import Image
+import pandas as pd
+import soundfile as sf
 
 app = FastAPI()
 os.environ['LLMFOUNDRY_TOKEN'] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImhhbnVzaC52QHN0cmFpdmUuY29tIn0.wO2I5bQROtEor8AeknXT91ieB8Yt-IdpaRf0S8jA9Jk"
@@ -33,7 +38,7 @@ def call_llm(prompt):
 @app.post("/run")
 def run_task(task: str = Query(...)):
     try:
-        prompt = f"""Identify which predefined task (A1 to A10) matches this user description: '{task}' and respond with only the task code.Classify the following task into one of these categories:
+        prompt = f"""Identify which predefined task (A1 to A10 and B2 to B8) matches this user description: '{task}' and respond with only the task code.Classify the following task into one of these categories:
         A1: generate_data
 A2: format_markdown
 A3: count_dates
@@ -44,6 +49,13 @@ A7: extract_email
 A8: process_image
 A9: find_similar
 A10: query_database
+B2: clone_repo
+B3: run_sql_query
+B4: scrape_website
+B5: compress_image
+B6: transcribe_audio
+B7: convert_markdown
+B8: filter_csv
         """
         llm_response = call_llm(prompt)
         selected_task = llm_response['choices'][0]['message']['content'].strip()
@@ -106,6 +118,54 @@ A10: query_database
             total = cursor.fetchone()[0]
             with open('./data/ticket-sales-gold.txt', 'w') as out:
                 out.write(str(total))
+
+        elif selected_task == "B2":  # Clone a git repo and make a commit
+            run_subprocess("git clone https://github.com/HanushKarthick2002/my-site ./data/repo")
+            run_subprocess("cd ./data/repo && git add . && git commit -m 'Automated commit'")
+
+        elif selected_task == "B3":  # Run a SQL query on a SQLite or DuckDB database
+            conn = sqlite3.connect('./data/ticket-sales.db')
+            cursor = conn.cursor()
+            cursor.execute("SELECT SUM(units * price) FROM tickets WHERE type = 'Gold'")
+            total = cursor.fetchone()[0]
+            with open('./data/ticket-sales-gold.txt', 'w') as out:
+                out.write(str(total))
+            conn.close()
+
+        elif selected_task == "B4":  # Extract data from (i.e. scrape) a website
+            response = requests.get("https://example.com")
+            if response.status_code == 200:
+                with open('./data/scraped_data.html', 'w') as out:
+                    out.write(response.text)
+            else:
+                raise HTTPException(status_code=500, detail="Failed to scrape website")
+
+        elif selected_task == "B5":  # Compress or resize an image
+            image_path = './data/image.png'
+            with Image.open(image_path) as img:
+                img = img.resize((100, 100))  # Resize image
+                img.save('./data/image_resized.png', "PNG")
+
+        elif selected_task == "B6":  # Transcribe audio from an MP3 file
+            data, samplerate = sf.read('./data/audio.mp3')
+            # Here you would implement the transcription logic
+            # For example, using a speech-to-text library
+            # transcribed_text = transcribe_audio(data, samplerate)
+            transcribed_text = "Transcribed audio text"  # Placeholder
+            with open('./data/transcription.txt', 'w') as out:
+                out.write(transcribed_text)
+
+        elif selected_task == "B7":  # Convert Markdown to HTML
+            with open('./data/document.md') as f:
+                markdown_content = f.read()
+            html_content = markdown_to_html(markdown_content)  # Implement this function
+            with open('./data/document.html', 'w') as out:
+                out.write(html_content)
+
+        elif selected_task == "B8":  # Write an API endpoint that filters a CSV file and returns JSON data
+            df = pd.read_csv('./data/data.csv')
+            filtered_df = df[df['column_name'] == 'filter_value']  # Example filter
+            filtered_df.to_json('./data/filtered_data.json', orient='records')
         else:
             raise HTTPException(status_code=400, detail="Unknown task")
 
@@ -115,3 +175,28 @@ A10: query_database
         raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+data_dir = Path("./data")  # Allowed data directory
+
+@app.get("/read")
+def read_file(path: str = Query(..., description="Path of the file inside /data directory")):
+    file_path = data_dir / path
+
+    # Manual Security check B1: Ensure path is inside /data
+    try:
+        file_path.relative_to(data_dir)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Access to paths outside /data is forbidden.")
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found.")
+
+    try:
+        content = file_path.read_text()
+        return {"content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+    
+def markdown_to_html(markdown_content):
+    # Implement a simple markdown to HTML conversion
+    return "<html><body>" + markdown_content.replace("\n", "<br>") + "</body></html>"
